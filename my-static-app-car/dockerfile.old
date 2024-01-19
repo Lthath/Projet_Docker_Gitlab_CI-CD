@@ -1,0 +1,24 @@
+# Création de l'étape de build à partir de l'image Alpine avec Node.js
+FROM node:current-alpine
+
+# Spécifier le répertoire de travail, ici c'est app-car
+WORKDIR /app-car
+
+# Copier tous les fichiers de notre application à la racine afin d'installer par la suite les dépendances 
+COPY . .
+
+# Installation des dépendances du site statiqueb Vite.js qui a pour plugin React
+RUN npm ci
+
+# Exposer le port 5173 pour notre serveur Vite.js
+EXPOSE 5173
+
+# Commande pour démarrer le serveur Vite.js
+CMD [ "npm", "run","dev", "--", "--host" ]
+
+LABEL maintainer="Lthat <hakim.afarmach@supdevinci-edu.fr>"
+LABEL description="Dockerfile adapté pour un projet Vite.js avec React"
+LABEL version="1.0"
+LABEL build_date="19/01/2024"
+
+
