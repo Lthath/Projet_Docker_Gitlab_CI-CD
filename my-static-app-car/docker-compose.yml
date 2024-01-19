@@ -1,0 +1,31 @@
+version: "3"
+
+services:
+  # Configuration du reverse proxy Traefik
+  reverse-proxy-traefik:
+    container_name: "traefik"
+    image: traefik:v2.10
+    command:
+      # Activation de la fonctionnalité de découverte automatique des services Docker, permettant à Traefik de détecter et de router automatiquement le trafic vers les services Docker en fonction des conteneurs qui sont en cours d'exécution.
+      - "--providers.docker=true"
+      # Ne pas exposer automatiquement tous les services Docker, nous ferons des labels personnalisés
+      - "--providers.docker.exposedbydefault=false"
+      # Configuration de l'entrée nommée "web" exposé sur le port 80
+      - "--entrypoints.web.address=:80"
+    ports:
+      - 80:80 # Port pour le trafic web
+      - 8080:8080 # Port pour le tableau de bord Traefik
+    volumes:
+      - ./traefik.toml:/etc/traefik/traefik.toml # Configuration personnalisée de Traefik
+      - /var/run/docker.sock:/var/run/docker.sock # Montage du socket Docker pour la communication avec l'API Docker
+
+  # Service de l'application "app-car"
+  app-car:
+    container_name: "app-car-traefik-prod"
+    image: app-car:2.0 # Image Docker créé grâce au docker multi-stage pour l'application
+    labels:
+      - "traefik.enable=true" # Activation de Traefik pour cette application qui fait office de "service".
+      - "traefik.http.routers.app-car-traefik-prod.rule=Host(`app-car.localhost`)" # Règle pour le routeur Traefik afin d'accéder à l'application
+      - "traefik.http.routers.app-car-traefik-prod.entrypoints=web" # Point d'entrée utilisé par Traefik, soit le port 80
+    depends_on:
+      - reverse-proxy-traefik # Dépendance pour s'assurer que le reverse proxy Traefik est prêt avant de démarrer cette application
