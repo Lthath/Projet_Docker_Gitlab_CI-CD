@@ -1,24 +1,30 @@
-# Création de l'étape de build à partir de l'image Alpine avec Node.js
-FROM node:current-alpine
+# L'ancien Dockerfile sans le multistage
+# REPOSITORY   TAG       IMAGE ID       CREATED          SIZE
+# app-car      1.0       8440ddee3888   11 minutes ago   503MB
 
-# Spécifier le répertoire de travail, ici c'est app-car
-WORKDIR /app-car
+# Stage 1: Base image for development
 
-# Copier tous les fichiers de notre application à la racine afin d'installer par la suite les dépendances 
+FROM node:current-alpine as base
+WORKDIR /app
 COPY . .
+RUN npm ci --quiet && npm cache clean --force
 
-# Installation des dépendances du site statiqueb Vite.js qui a pour plugin React
-RUN npm ci
+# Stage 2: Build stage
 
-# Exposer le port 5173 pour notre serveur Vite.js
-EXPOSE 5173
+FROM base AS build 
+WORKDIR /build
+COPY --from=base /app ./
+RUN npm run build
 
-# Commande pour démarrer le serveur Vite.js
-CMD [ "npm", "run","dev", "--", "--host" ]
+# Stage 3: Production image 
+
+FROM nginx:stable-alpine as production
+COPY --from=build /build/dist /usr/share/nginx/html
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]
+
 
 LABEL maintainer="Lthat <hakim.afarmach@supdevinci-edu.fr>"
-LABEL description="Dockerfile adapté pour un projet Vite.js avec React"
-LABEL version="1.0"
+LABEL description="Optimisation de la première version avec un Dockerfile multi-stage"
+LABEL version="2.0"
 LABEL build_date="19/01/2024"
-
-
