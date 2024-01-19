@@ -1,0 +1,4 @@
+# Utilisation du fichier toml car dans le fichier docker compose il ne comprend pas le booléen, utile juste pour le dashboard afin de voir les routes.
+[api]
+  dashboard = true
+  insecure = true 
