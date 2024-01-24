@@ -1,22 +1,53 @@
 # Table des Matières
 
-1. [**_Généralité_**](#Généralité)
-2. [**_Technique_**](#Technique)
+1.  [**_Généralité_**](#Généralité)
+2.  [**_Technique_**](#Technique) - **Partie 1 : Docker 🐋**
 
-   2.1. [**_Exercice 1 : Une application statique dockerisée_**](#Exercice-1)
+    2.1. [**_Exercice 1 : Une application statique dockerisée_**](#Exercice-1)
 
-   1. [**_Pré-requis_**](#Pré-requis)
-   2. [**_Créer une application web statique simple_**](#Créer)
-   3. [**_Rédiger un Dockerfile pour cette application_**](#Rédiger)
-   4. [**_Construire l'image Docker à partir du Dockerfile_**](#Construire)
-   5. [**_Démarrer un conteneur Docker basé sur cette image pour tester localement_**](#Démarrer)
+    1. [**_Pré-requis_**](#Pré-requis)
+    2. [**_Créer une application web statique simple_**](#Créer)
+    3. [**_Rédiger un Dockerfile pour cette application_**](#Rédiger)
+    4. [**_Construire l'image Docker à partir du Dockerfile_**](#Construire)
+    5. [**_Démarrer un conteneur Docker basé sur cette image pour tester localement_**](#Démarrer)
 
-   2.2. [**_Exercice 2 : Docker Multistage Build_**](#Exercice-2)
+    2.2. [**_Exercice 2 : Docker Multistage Build_**](#Exercice-2)
 
-   1. [**_Pré-requis_**](#Pré-requis)
-   2. [**_Ecrire un Dockerfile multistage pour l'application construite dans l'exercice 1_**](#Ecrire)
-   3. [**_Construire l'image Docker à partir du Dockerfile_**](#Rédiger)
-   4. [**_Démarrer un conteneur Docker basé sur cette image Multi-stage pour tester localement_**](#Démarrer)
+    1. [**_Pré-requis_**](#Pré-requis)
+    2. [**_Ecrire un Dockerfile multistage pour l'application construite dans l'exercice 1_**](#Ecrire)
+    3. [**_Construire l'image Docker à partir du Dockerfile_**](#Rédiger)
+    4. [**_Démarrer un conteneur Docker basé sur cette image Multi-stage pour tester localement_**](#Démarrer)
+
+    2.3. [**_Exercice 3: Traefik & Docker Compose_**](#Exercice-3)
+
+    1. [**_Pré-requis_**](#Pré-requis)
+    2. [**_Ecrire le fichier Docker Compose qui lance Traefik et qui donne accès à votre site web_**](#Dcoker-compose)
+    3. [**_Pertinence des choix faits pour Traefik_**](#Rédiger)
+
+       - **Partie 2: GitLab CI/CD 🦊**
+
+    2.1. [**_Exercice 1 : Intégration et Déploiement Continu avec AutoDevOps_**](#Intégration)
+
+    1. [**_Pré-requis_**](#Pré-requis)
+    2. [**_Configurer un repository Gitlab avec AutoDevOps_**](#Configurer)
+    3. [**_Personnaliser le .gitlab-ci.yml pour l'application web statique_**](#Personnaliser)
+    4. [**_Déployer l'application dans un environnement de staging_**](#Déployer)
+    5. [**_Documenter le processus AutoDevOps et les choix de configuration_**](#Documenter)
+
+    2.2. [**_Exercice 2 : Déploiement en Staging et Production_**](#Exercice-2)
+
+    1. [**_Pré-requis_**](#Pré-requis)
+    2. [**_Compléter le .gitlab-ci.yml pour inclure des stages de déploiement distincts pour le staging et la production_**](#Compléter)
+    3. [**_Configurer le déploiement automatique sur GitLab Pages pour la production_**](#Ecrire)
+    4. [**_Vérifier le fonctionnement de l'application dans les deux environnements_**](#Rédiger)
+    5. [**_Documenter les étapes et configurations pour les déploiements en staging et en production_**](#Démarrer)
+
+    2.3. [**_Exercice 3 : Vulnérabilités_**](#Exercice-3)
+
+    1. [**_Pré-requis_**](#Pré-requis)
+    2. [**_A l'aide des conteneurs Docker fournis par Owasp ZAP, mettre en place un scanner de vulnérabilité sur votre site web_**](#Owasp-ZAP)
+    3. [**_Récupérer les résultats dans les artifacts_**](#Récupérer)
+    4. [**_Utiliser les artifacts dans un job suivant pour bloquer la CI si des vulnérabilités sont détectées_**](#Utiliser)
 
 <br>
 
@@ -31,6 +62,8 @@ Vous trouverez l'énoncé dans le fichier [PROJET.md](https://gitlab.com/Lthat_h
 **Bonne Lecture !**
 
 # 2 - Technique
+
+## **------------------------------------------------------------------ Partie 1 : Docker 🐋 -------------------------------------------------------------------**
 
 ## 2.1 --- Exercice 1: Une application statique dockerisée
 
@@ -239,8 +272,38 @@ Traefik agit en tant que reverse proxy pour diriger le trafic entrant vers diff�
 
 **En résumé, ces choix fournissent une configuration claire, flexible et adaptée aux besoins spécifiques de l'architecture, en permettant une gestion efficace des services via Traefik dans un environnement Docker.**
 
-Il suffit juste de tapé dans le terminal à la racine du projet où il y a le Docker compose.yml **_docker compose up -d_** pour exécuter les services.
+Il suffit juste de tapé dans le terminal à la racine du projet où il y a le Docker compose.yml **_docker compose up -d_** pour exécuter les services. Et bien sûr avoir effectué l'exercice 2 pour avoir l'image de l'application.
 
 **Résultats avec l'url **_app-car.localhost:8080_** ci-dessous**
 
 <img src="images/traefik-app-car.png">
+
+## **------------------------------------------------------------------ Partie 2: GitLab CI/CD 🦊 ----------------------------------------------------------**
+
+## 2.1 --- Exercice 1 : Intégration et Déploiement Continu avec AutoDevOps
+
+### 2.1.1 ------ Pré-requis
+
+                        - Avoir un RUNNER local
+                        - Editeur de code (Vscode, SublimText, Notepad++)
+                        - Avoir fini la Partie 1 -- Docker
+
+### Bonus ------ Installation du Runner en local sur une Ubuntu 22.04 wsl
+
+Pour installer un Runner je vous renvoie à cette documentation très détaillé [Installation du Runner](https://linux.how2shout.com/how-to-install-gitlab-runner-on-ubuntu-such-as-22-04-or-20-04/)
+
+J'utilise le **Shell executor** car pour mon pc qui est en fin de vie, c'est mieux en termes de consommation de ressources telles que la RAM, car il permet d'exécuter des commandes et des scripts directement dans le contexte du même processus, évitant ainsi le surcoût potentiel associé à l'utilisation d'environnements virtuels ou de conteneurs pour chaque étape de la pipeline. Cela peut contribuer à une exécution plus légère et rapide du pipeline.
+
+### 2.1.2 ------ Configurer un repository Gitlab avec AutoDevOps
+
+AutoDevOps simplifie le déploiement continu en automatisant l'ensemble du processus, sans nécessiter une configuration manuelle complexe.
+
+<br>
+
+Voici les étapes pour Configurer un repo Gitlab avec AutoDevOps
+
+**Repo --> Settings --> CI/CD --> AutoDevOps --> Expand**
+
+<img src="images/Config_auto_devops.png">
+
+### 2.1.3 ------ Personnaliser le .gitlab-ci.yml pour l'application web statique
