@@ -1,9 +1,11 @@
 # Table des Matières
 
 1.  [**_Généralité_**](#Généralité)
-2.  [**_Technique_**](#Technique) - **Partie 1 : Docker 🐋**
+2.  [**_Technique_**](#Technique)
 
-    2.1. [**_Exercice 1 : Une application statique dockerisée_**](#Exercice-1)
+    - **Partie 1 : Docker 🐋**
+
+      2.1. [**_Exercice 1 : Une application statique dockerisée_**](#Exercice-1)
 
     1. [**_Pré-requis_**](#Pré-requis)
     2. [**_Créer une application web statique simple_**](#Créer)
@@ -24,9 +26,9 @@
     2. [**_Ecrire le fichier Docker Compose qui lance Traefik et qui donne accès à votre site web_**](#Dcoker-compose)
     3. [**_Pertinence des choix faits pour Traefik_**](#Rédiger)
 
-       - **Partie 2: GitLab CI/CD 🦊**
+    - **Partie 2: GitLab CI/CD 🦊**
 
-    2.1. [**_Exercice 1 : Intégration et Déploiement Continu avec AutoDevOps_**](#Intégration)
+      2.1. [**_Exercice 1 : Intégration et Déploiement Continu avec AutoDevOps_**](#Intégration)
 
     1. [**_Pré-requis_**](#Pré-requis)
     2. [**_Configurer un repository Gitlab avec AutoDevOps_**](#Configurer)
@@ -63,7 +65,7 @@ Vous trouverez l'énoncé dans le fichier [PROJET.md](https://gitlab.com/Lthat_h
 
 # 2 - Technique
 
-## **------------------------------------------------------------------ Partie 1 : Docker 🐋 -------------------------------------------------------------------**
+## **------------------------------- Partie 1 : Docker 🐋 --------------------------------------**
 
 ## 2.1 --- Exercice 1: Une application statique dockerisée
 
@@ -278,7 +280,7 @@ Il suffit juste de tapé dans le terminal à la racine du projet où il y a le D
 
 <img src="images/traefik-app-car.png">
 
-## **------------------------------------------------------------------ Partie 2: GitLab CI/CD 🦊 ----------------------------------------------------------**
+## **-------------------------- Partie 2: GitLab CI/CD 🦊 --------------------------------**
 
 ## 2.1 --- Exercice 1 : Intégration et Déploiement Continu avec AutoDevOps
 
