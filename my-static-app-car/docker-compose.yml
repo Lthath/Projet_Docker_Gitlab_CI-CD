@@ -22,7 +22,7 @@ services:
   # Service de l'application "app-car"
   app-car:
     container_name: "app-car-traefik-prod"
-    image: app-car:2.0 # Image Docker créé grâce au docker multi-stage pour l'application
+    image: ${DOCKER_IMAGE} # Image Docker créé grâce au docker multi-stage pour l'application
     labels:
       - "traefik.enable=true" # Activation de Traefik pour cette application qui fait office de "service".
       - "traefik.http.routers.app-car-traefik-prod.rule=Host(`app-car.localhost`)" # Règle pour le routeur Traefik afin d'accéder à l'application

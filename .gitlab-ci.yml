@@ -1,36 +1,33 @@
+include:
+  - template: Jobs/Code-Quality.gitlab-ci.yml
+
 stages:
   - build
   - test
   - staging
 
-include:
-  - template: Jobs/Code-Quality.gitlab-ci.yml
-
 before_script:
-  - docker login registry.gitlab.com -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD
+  - - docker login -u $CI_REGISTRY_USER -p $CI_JOB_TOKEN $CI_REGISTRY
 
 build:
   stage: build
   script:
     - cd my-static-app-car
-    - docker build -t $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG -f dockerfile .
+    - docker build -t $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_NAME -f dockerfile .
+    - docker push $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_NAME
     - echo "build successful"
-  artifacts:
-    paths:
-      - app-car-build-staging/
 
 staging:
   stage: staging
   script:
     - cd my-static-app-car/
-    - export DOCKER_IMAGE=$CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG
-    - docker-compose up -d --build
-    - echo "Test application --> http://app-car.localhost"
+    - docker run -d -p 8080:80 --name app-car-staging $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_NAME
+    - echo "Test application --> http://localhost:8080"
   dependencies:
     - build
   environment:
     name: staging
-    url: http://app-car.localhost
+    url: http://localhost:8080
   only:
     - main
   when: on_success
