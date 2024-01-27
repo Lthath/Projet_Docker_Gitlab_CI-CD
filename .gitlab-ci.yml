@@ -5,29 +5,55 @@ stages:
   - build
   - test
   - staging
+  - production
+
+variables:
+  DOCKER_IMAGE: node:current-alpine
 
 before_script:
-  - - docker login -u $CI_REGISTRY_USER -p $CI_JOB_TOKEN $CI_REGISTRY
+  - cd my-static-app-car
+  - docker login -u $CI_REGISTRY_USER -p $CI_JOB_TOKEN $CI_REGISTRY
 
 build:
   stage: build
   script:
-    - cd my-static-app-car
-    - docker build -t $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_NAME -f dockerfile .
-    - docker push $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_NAME
-    - echo "build successful"
+    - npm ci --quiet && npm cache clean --force
+    - npm run build
+    - mv dist ../public
+  artifacts:
+    paths:
+      - public
+    untracked: false
+    when: on_success
+    expire_in: "30 days"
 
 staging:
   stage: staging
   script:
-    - cd my-static-app-car/
-    - docker run -d -p 8080:80 --name app-car-staging $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_NAME
-    - echo "Test application --> http://localhost:8080"
+    - cp -r public/* $CI_PROJECT_DIR/staging
+    - cd $CI_PROJECT_DIR/staging
+    - npm install -g http-server
+    - http-server -p 8080 &
+    - echo "Staging server is running --> http://localhost:8080"
   dependencies:
     - build
   environment:
     name: staging
     url: http://localhost:8080
+  when: on_success
+
+pages:
+  stage: production
+  script:
+    - echo "Deploying to production...."
+  artifacts:
+    paths:
+      - public
+  environment:
+    name: production
+    url: https://Lthat_h.gitlab.io/projet_docker_gitlab_ci_cd_new
+  dependencies:
+    - build
   only:
     - main
-  when: on_success
+  when: manual
