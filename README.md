@@ -309,3 +309,310 @@ Voici les étapes pour Configurer un repo Gitlab avec AutoDevOps
 <img src="images/Config_auto_devops.png">
 
 ### 2.1.3 ------ Personnaliser le .gitlab-ci.yml pour l'application web statique
+
+Après avoir créer le fichier **.gitlab-ci.yml** à la racine du projet j'ai inclus le modèle Auto-DevOps.gitlab-ci.yml dans mon fichier .gitlab-ci.yml. Cela signifie que j'utilise les configurations prédéfinies de GitLab Auto-DevOps pour automatiser les étapes de builds et de test.
+
+Le modèle **Auto-DevOps de GitLab** se concentre principalement sur l'automatisation des étapes de builds et de test, en laissant une plus grande flexibilité aux développeurs en ce qui concerne le déploiement. Après avoir fais un push du fichier ci-dessous :
+
+<img src="images/pipeline.png">
+
+Nous avons la pipeline qui s'est déclenché et qui échoue. Résultat **_ci-dessous_** :
+
+<img src="images/error-pipeline.png">
+
+Pour le stage build voici l'erreur que je rencontre :
+
+<img src="images/error-build.png">
+
+L'erreur que je rencontre, **"bash: line 183: /build/build.sh: No such file or directory"**, indique que le script build.sh n'est pas trouvé dans le chemin spécifié. Après plusieurs tentatives de débuggage et mes recherches sur Internet pour l'étape du build je le ferai d'une manière personnalisé et non en suivant le modèle d'Auto-DevOps.
+
+- **Etape débuggage**
+
+<img src="images/build-debuggage.png">
+
+Ces commandes ajoutées nous permettront de vérifier si le fichier build.sh existe dans le répertoire /build pendant l'exécution du pipeline Auto-DevOps. Mais nous avons toujours la même erreur, alors j'ai abandonné pour le modèle d'Auto-DevOps pour le premier stage.
+
+Pour le second stage (test) la partie **_code_quality_** j'ai eu cette erreur de permissions.
+
+<img src="images/error-test.png">
+
+Alors en tapant dans ma distribution ubuntu **groups gitlab-runner** j'ai vu qu'il y a un problème d'accès au socker Docker car le démon Docker écoute par défaut sur le socket Unix /var/run/docker.sock. L'accès à ce socket est contrôlé par les permissions de fichier et l'appartenance au groupe docker. Or en ajoutant gitlab-runner au groupe docker, je pourrai donner à mon Runner local "Shell executor" les droits nécessaires pour communiquer avec le démon Docker.
+
+Voici les commandes à taper en tant que root et relancer la pipeline depuis l'interface Gitlab :
+
+                          - usermod -aG docker gitlab-runner
+                          - chown gitlab-runner:gitlab-runner gitlab-runner.service
+                          - gitlab-runner restart
+
+Après avoir relancé la pipeline nous pouvons voir que l'erreur s'est corrigée.
+
+<img src="images/code-quality-succeed.png">
+
+On peut voir que le Job a duré 51 minutes et 33 secondes car mon pc était entrain de pull toutes les images nécessaires etn'a pas assez de ressources. ( n'est pas assez puissant )
+
+**Personnalisation du gitlab-ci.yml**
+
+Après analyse du modèle auto-devops nous allons inclure seulement le job **_Code-quality_** pour le stage **test**, pour le build nous le ferons sans modèle et pour le déploiement en staging via la variable d'environnement **_STAGING_ENABLED_** AutoDevOps se chargera de déployer automatiquement l'application en staging.
+
+### 2.1.4 ------ Déployer l'application dans un environnement de staging
+
+Voici à quoi ressemble ma pipeline finale
+
+<img src="images/exo1_succeed.png">
+
+<img src="images/view_pipeline_exo1.png">
+
+<img src="images/exo1_env.png">
+
+<img src="images/exo1-app.png">
+
+### 2.1.5 ------ Documenter le processus AutoDevOps et les choix de configuration
+
+**Explication de la pipeline**
+
+```sh
+Include:
+  -template: Jobs/Code-Quality.gitlab-ci.yml
+```
+
+                    - On inclus le modèle du stage Test qui a pour job Code-Quality
+
+```sh
+Stages:
+    -build
+    -test
+    -staging
+```
+
+                    - On déclare les stages ( étapes de la pipeline)
+
+```sh
+before_script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_JOB_TOKEN $CI_REGISTRY
+```
+
+                    - On se connecte au registre Docker en utilisant les informations d'identification du projet (nom d'utilisateur et token) afin de préparer l'environnement Docker pour l'exécution des tâches du pipeline.
+
+```sh
+build:
+  stage: build
+  script:
+    - cd my-static-app-car
+    - docker build -t $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_NAME -f dockerfile .
+    - docker push $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_NAME
+    - echo "build successful"**
+```
+
+                    - On définit la tâche de construction ("build") dans la phase "build" du pipeline. Il se déplace vers le répertoire "my-static-app-car", construit une image Docker à partir du fichier Dockerfile, pousse cette image vers le registre Docker associé au projet, et affiche un message indiquant que la construction a réussi. l'image sera le l'adresse du registre Docker associé à mon projet + le tag qui est le nom de la branche soit **main**
+
+```sh
+staging:
+  stage: staging
+  script:
+    - cd my-static-app-car/
+    - docker run -d -p 8080:80 --name app-car-staging  $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_NAME
+    - echo "Test application --> http://localhost:8080"
+  dependencies:
+    - build
+  environment:
+    name: staging
+    url: http://localhost:8080
+  only:
+    - main
+  when: on_success
+
+```
+
+                  - C'est le job de déploiement sur un environnement de staging (pré-production).La tâche "staging" dans la phase "staging" du pipeline CD déploie l'application statique (my-static-app-car) en utilisant une image Docker construite précédemment sur le registre Docker du projet. Elle lance un conteneur Docker en mode détaché (-d), exposant le port 8080 localement et utilisant l'étiquette d'image correspondant à la branche principale ($CI_COMMIT_REF_NAME). Ensuite, un message est affiché indiquant l'URL à laquelle l'application peut être testée en environnement de staging. Cette tâche dépend de la tâche de construction ("build"), est conditionnée pour s'exécuter uniquement sur la branche principale (main), et est déclenchée en cas de succès du pipeline de construction. L'environnement de staging est configuré avec le nom "staging" et l'URL http://localhost:8080.
+
+**Processus AutoDevOps**
+
+Comme je l'ai déjà expliquer pour le processus AutoDevOps après une grande analyse le job qu'on peut utilisé adéquatement au projet est le job Code-Quality.
+
+Voici le lien de la pipeline réussi [ICI](https://gitlab.com/Lthat_h/projet_docker_gitlab_ci_cd_new/-/commit/016c41ad32a07da433d37e05824abe2c135f0c24/pipelines)
+
+## 2.2 --- Exercice 2 : Déploiement en Staging et Production
+
+### 2.2.1 ------ Pré-requis
+
+                        - Avoir un RUNNER local
+                        - Editeur de code (Vscode, SublimText, Notepad++)
+                        - Avoir fini l'exo 1 Partie 2
+
+### 2.2.2 ------ Compléter le .gitlab-ci.yml pour inclure des stages de déploiement distincts pour le staging et la production
+
+Voici la pipeline et les résultats
+
+<img src="images/EXO2_pipeline.png">
+
+<img src="images/view_exo2_pipeline.png">
+
+Voici le lien de la pipeline réussi [ICI](https://gitlab.com/Lthat_h/projet_docker_gitlab_ci_cd_new/-/pipelines/1155317588)
+
+### 2.2.3 ------ Configurer le déploiement automatique sur GitLab Pages pour la production
+
+J'ai suivi le mode opératoire directement sur gitlab pour voir comment construite et compléter ma pipeline sans validé j'ai récupérer juste le draft et adapté à ma pipeline.
+
+<img src="images/step-gitlab-pages.png">
+
+### 2.2.4 ------ Vérifier le fonctionnement de l'application dans les deux environnements
+
+Le fonctionnement de l'application dans l'environnement **staging** et de **prod** fonctionne correctement. Vous trouverez ci-dessous les explications de ma pipeline en détails pour comprendre.
+
+### 2.2.5 ------ Documenter les étapes et configurations pour les déploiements en staging et en production
+
+```sh
+Include:
+  -template: Jobs/Code-Quality.gitlab-ci.yml
+```
+
+                    - On inclus le modèle du stage Test qui a pour job Code-Quality
+
+```sh
+Stages:
+    -build
+    -test
+    -staging
+    -production
+
+```
+
+                    - On déclare les stages ( étapes de la pipeline)
+
+```sh
+variables:
+  DOCKER_IMAGE: node:current-alpine
+  DOCKER_IMAGE_STAGING: $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_NAME
+```
+
+                    - On déclare nos variables, la variable DOCKER_IMAGE qui va nous servir pour le BUILD
+                      et le DOCKER_IMAGE_STAGING pour le staging
+
+```sh
+before_script:
+  - cd my-static-app-car
+  - docker login -u $CI_REGISTRY_USER -p $CI_JOB_TOKEN $CI_REGISTRY
+  - docker pull $DOCKER_IMAGE
+```
+
+                    - On se déplace dans le répertoire my-static-app-car ensuite on se login comme annoncé dans l'exo 1 et on pull l'image docker pour pouvoir exécuter nos conteneur et nos scripts de builds
+
+```sh
+build:
+  stage: build
+  script:
+    - docker run --rm -v $CI_PROJECT_DIR/my-static-app-car:/app -w /app $DOCKER_IMAGE npm ci --quiet && npm cache clean --force
+    - docker run --rm -v $CI_PROJECT_DIR/my-static-app-car:/app -w /app $DOCKER_IMAGE npm run build
+    - sudo chmod 777 -R $PWD
+    - mkdir -p $CI_PROJECT_DIR/public
+    - mv dist $CI_PROJECT_DIR/public
+  artifacts:
+    paths:
+      - public
+    untracked: false
+    when: on_success
+    expire_in: "30 days"
+
+```
+
+                  - Suite à plusieurs problème de mon runner avec des versions node pas compatibles et des permissions denied j'ai réfléchis à une solution docker qui exécutera un conteneur avec un volume associé à mon runner ou je pourrai build dans le conteneur docker grace à l'image adapté et déclarer qui utilise un node:current-alpine tout en récupérant les résultats dans mon runner ensuite une fois que le conteneur fini ses script il se supprime automatiquement pareil pour le second qui effectue le npm run build ensuite pou résoudre les problèmes de permissions denied j'ai modifié les permissions des fichiers pour les rendre accessibles (chmod 777) dans le répertoire de travail actuel ($PWD), créé un répertoire public dans le répertoire du projet GitLab ($CI_PROJECT_DIR).
+                   Déplace le contenu du répertoire dist généré par la construction de l'application vers le répertoire public. Et ensuite configurer les artifacts,.Ces artefacts peuvent être utilisés dans les étapes suivantes du pipeline ou pour le déploiement. Ils sont conservés pendant une période de 30 jours après le succès de la tâche de construction.
+                   En résumé, ce script automatise le processus de construction de l'application statique en utilisant Docker, installe les dépendances, construit l'application, ajuste les permissions des fichiers, déplace les fichiers construits vers un répertoire public, et configure les artefacts pour une utilisation ultérieure dans le pipeline GitLab CI.
+
+```sh
+staging:
+  stage: staging
+  script:
+    - docker run -d -p 8080:80 --name app-car-staging $DOCKER_IMAGE_STAGING
+    - echo "Staging server is running --> http://localhost:8080"
+  environment:
+    name: staging
+    url: http://localhost:8080
+  dependencies:
+    - build
+  when: on_success
+
+
+```
+
+                  - Pour le staging c'est celui qui est identique à l'exo 1 et en cas de succès s'exécute automatiquement dans son environnement
+
+```sh
+pages:
+  stage: production
+  script:
+    - echo "Deploying to production...."
+  artifacts:
+    paths:
+      - public
+  environment:
+    name: production
+  dependencies:
+    - build
+  only:
+    - main
+  when: on_success
+
+
+```
+
+                - Ce job de production ne contient pas d'étapes de déploiement spécifiques dans le script, mais il configure l'environnement de production dans GitLab et prépare les artefacts nécessaires pour le déploiement ( récupérer à partir du build ). Entre autre ce job spécifie que cette tâche dépend de la tâche "build", ce qui signifie qu'elle ne sera exécutée que si la tâche "build" associée a réussi. La tâche est configurée pour s'exécuter uniquement lorsque la construction est réussie et que le pipeline est exécuté sur la branche principale ("only: - main", "when: on_success").
+
+## 2.3 --- Exercice 3 : Vulnérabilités
+
+### 2.3.1 ------ Pré-requis
+
+                        - Avoir un RUNNER local
+                        - Editeur de code (Vscode, SublimText, Notepad++)
+                        - Avoir fini l'exo 1 Partie 2 et l'exo 2
+
+### 2.3.2 ------- Pipeline EXO 3 + Explications et résultat final
+
+<img src="images/scan-job-vulnerabilities.png">
+
+```sh
+owasp:
+  image: owasp/zap2docker-live
+  stage: scan
+  allow_failure: true
+  script:
+    - echo "Création d'un répertoire..."
+    - mkdir /zap/wrk
+    - echo "Exécution du scan de base..."
+    - /zap/zap-baseline.py -t http://localhost:8080/ -g gen.conf -r testreport.html
+  after_script:
+    - echo "Copie du fichier de rapport vers le chemin des artefacts..."
+    - cp /zap/wrk/testreport.html .
+  needs:
+    - job: staging
+  artifacts:
+    when: always
+    expire_in: 30 days
+    paths:
+      - testreport.html
+
+handle_vulnerabilities:
+  stage: scan
+  script:
+    - echo "Vérification des vulnérabilités dans le rapport..."
+    - |
+      if grep -q "Number of Alerts: 0" testreport.html; then
+        echo "Aucune vulnérabilité détectée."
+      else
+        echo "Vulnérabilités détectées. Consultez le rapport testreport.html pour plus de détails."
+        exit 1
+      fi
+  needs:
+    - job: owasp
+
+```
+
+                        - Dans ce job La première étape (owasp) utilise l'image Docker de OWASP ZAP pour effectuer un scan de sécurité sur http://localhost:8080/ notre url STAGING, génère un rapport (testreport.html), et copie ce rapport dans les artefacts du pipeline.
+
+                        La deuxième étape (handle_vulnerabilities) vérifie le rapport pour la présence de vulnérabilités. Si aucune vulnérabilité n'est détectée, elle affiche un message indiquant l'absence de vulnérabilités. Sinon, elle signale la présence de vulnérabilités et termine le pipeline avec un code d'erreur. Cette étape dépend du succès de l'étape précédente (owasp).
+
+Merci
+
+voici la pipeline [ICI](https://gitlab.com/Lthat_h/projet_docker_gitlab_ci_cd_new/-/jobs/6038726114)
+
+-------------------------------**FIN**--------------------------------
