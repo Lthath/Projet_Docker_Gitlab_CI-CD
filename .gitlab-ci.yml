@@ -5,6 +5,7 @@ stages:
   - build
   - test
   - staging
+  - scan
   - production
 
 variables:
@@ -31,6 +32,40 @@ build:
     when: on_success
     expire_in: "30 days"
 
+owasp:
+  image: owasp/zap2docker-live
+  stage: scan
+  allow_failure: true
+  script:
+    - echo "create a directory..."
+    - mkdir /zap/wrk
+    - echo "Execute the baseline scan..."
+    - /zap/zap-baseline.py -t http://localhost:8080/ -g gen.conf -r testreport.html
+  after_script:
+    - echo "Copy report file to the artifact path..."
+    - cp /zap/wrk/testreport.html .
+  needs:
+    - job: staging
+  artifacts:
+    when: always
+    expire_in: 30 days
+    paths:
+      - testreport.html
+
+handle_vulnerabilities:
+  stage: scan
+  script:
+    - echo "Checking for vulnerabilities..."
+    - |
+      if grep -q "Number of Alerts: 0" testreport.html; then
+        echo "No vulnerabilities found."
+      else
+        echo "Vulnerabilities found. Check the artifact testreport.html for details."
+        exit 1
+      fi
+  needs:
+    - job: owasp
+
 staging:
   stage: staging
   script:
@@ -54,6 +89,7 @@ pages:
     name: production
   dependencies:
     - build
+    - handle_vulnerabilities
   only:
     - main
   when: on_success
