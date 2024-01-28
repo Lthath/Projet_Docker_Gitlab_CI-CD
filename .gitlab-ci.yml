@@ -1,34 +1,28 @@
-include:
-  - template: Jobs/Code-Quality.gitlab-ci.yml
-
 stages:
-  - test
   - staging
   - production
 
+variables:
+  DOCKER_IMAGE: $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_NAME
+
 before_script:
-  - cd my-static-app-car
   - docker login -u $CI_REGISTRY_USER -p $CI_JOB_TOKEN $CI_REGISTRY
 
 staging:
   stage: staging
   script:
-    - docker run -d -p 8080:80 --name app-car-staging $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_NAME #déjà l'mage grâce à l'exo 1
+    - docker run -d -p 8080:80 --name app-car-staging $DOCKER_IMAGE #déjà l'image grâce à l'exo 1 Voir Pré-requis
     - echo "Test application --> http://localhost:8080"
   environment:
     name: staging
-    url: http://localhost:8080
-  when: on_success
 
 pages:
   stage: production
   script:
+    - cd my-static-app-car
     - npm ci && npm run build
     - mv dist ../public
     - echo "Deploying to production...."
-  artifacts:
-    paths:
-      - public
   environment:
     name: production
     url: https://Lthat_h.gitlab.io/projet_docker_gitlab_ci_cd_new
